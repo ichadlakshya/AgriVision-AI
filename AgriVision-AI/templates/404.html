@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Page Not Found{% endblock %}
+
+{% block content %}
+<div style="display: flex; align-items: center; justify-content: center; min-height: calc(100vh - 200px); padding: 40px 20px;">
+    <div style="text-align: center;">
+        <h1 style="font-size: 5rem; font-weight: 800; color: #52b788; margin-bottom: 10px;">404</h1>
+        <h2 style="font-size: 2rem; color: #e9ecef; margin-bottom: 20px;">Page Not Found</h2>
+        <p style="color: #a8b5c1; margin-bottom: 40px; font-size: 1.1rem;">
+            Sorry, the page you're looking for doesn't exist or has been moved.
+        </p>
+        <a href="/" class="btn btn-primary btn-lg">
+            <i class="fas fa-home"></i> Go Home
+        </a>
+    </div>
+</div>
+{% endblock %}

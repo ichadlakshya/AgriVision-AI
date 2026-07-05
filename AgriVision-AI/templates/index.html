@@ -1,0 +1,465 @@
+{% extends "base.html" %}
+
+{% block title %}AgriVision AI - Home{% endblock %}
+
+{% block content %}
+<div class="hero-section">
+    <div class="container-xl">
+        <div class="hero-content">
+            <h1 class="hero-title">
+                Agricultural Intelligence
+                <span class="text-gradient">Powered by AI</span>
+            </h1>
+            <p class="hero-subtitle">
+                Predict crop production, get intelligent insights, and make data-driven farming decisions with AgriVision AI
+            </p>
+            <div class="hero-buttons">
+                <a href="/chatbot" class="btn btn-primary btn-lg">
+                    <i class="fas fa-comments"></i> Start Chat
+                </a>
+                <a href="/analytics" class="btn btn-outline-primary btn-lg">
+                    <i class="fas fa-chart-bar"></i> View Analytics
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .prediction-result-card {
+        background: linear-gradient(135deg, rgba(26, 35, 50, 0.98), rgba(31, 45, 63, 0.98));
+        border: 1px solid rgba(82, 183, 136, 0.18);
+        border-radius: 18px;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+        animation: predictionReveal 0.35s ease-out;
+    }
+
+    .prediction-bar-wrap {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(82, 183, 136, 0.12);
+        border-radius: 14px;
+        padding: 16px;
+    }
+
+    .prediction-bar-labels {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+        color: #cbd5e1;
+        margin-bottom: 8px;
+    }
+
+    .prediction-bar-track {
+        position: relative;
+        height: 14px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        overflow: hidden;
+    }
+
+    .prediction-bar-fill {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        border-radius: 999px;
+        transition: width 0.6s ease;
+    }
+
+    .prediction-bar-fill.predicted {
+        background: linear-gradient(90deg, #52b788, #2d8659);
+    }
+
+    .prediction-bar-fill.historical {
+        background: linear-gradient(90deg, #f4a261, #e76f51);
+        opacity: 0.9;
+    }
+
+    @keyframes predictionReveal {
+        from {
+            transform: translateY(10px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+</style>
+
+<!-- Prediction Section -->
+<section class="prediction-section py-5">
+    <div class="container-xl">
+        <div class="row g-4 align-items-stretch">
+            <div class="col-lg-5">
+                <div class="feature-card h-100">
+                    <div class="feature-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <h2 class="section-title text-start mb-3">Quick Prediction</h2>
+                    <p class="mb-4">Estimate crop production directly from the home page using the trained model and historical crop data.</p>
+                    <div class="d-flex gap-3 flex-wrap">
+                        <a href="/analytics" class="btn btn-outline-primary btn-lg">
+                            <i class="fas fa-chart-bar"></i> Explore Analytics
+                        </a>
+                        <a href="/chatbot" class="btn btn-primary btn-lg">
+                            <i class="fas fa-comments"></i> Ask the Assistant
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-7">
+                <div class="feature-card h-100">
+                    <h3 class="mb-4">Prediction Inputs</h3>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">State</label>
+                            <select id="predState" class="form-select">
+                                {% for state in options.states %}
+                                <option value="{{ state }}" {% if loop.first %}selected{% endif %}>{{ state }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">District</label>
+                            <select id="predDistrict" class="form-select">
+                                {% for district in options.districts %}
+                                <option value="{{ district }}" {% if loop.first %}selected{% endif %}>{{ district }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Crop</label>
+                            <select id="predCrop" class="form-select">
+                                {% for crop in options.crops %}
+                                <option value="{{ crop }}">{{ crop }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Season</label>
+                            <select id="predSeason" class="form-select">
+                                {% for season in options.seasons %}
+                                <option value="{{ season }}">{{ season }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Crop Year</label>
+                            <input id="predYear" type="number" class="form-control" value="{{ options.default_year }}" min="1997" max="2035">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Area (hectares)</label>
+                            <input id="predArea" type="number" class="form-control" value="1000" min="1">
+                        </div>
+                        <div class="col-12">
+                            <button id="runPredictionBtn" class="btn btn-success btn-lg w-100" type="button">
+                                <i class="fas fa-seedling"></i> Predict Production
+                            </button>
+                        </div>
+                    </div>
+                    <div id="predictionResult" class="mt-4 d-none"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Stats Section -->
+<section class="stats-section">
+    <div class="container-xl">
+        <h2 class="section-title text-center mb-5">Platform Overview</h2>
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-3">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-number">{{ stats.total_records }}</h3>
+                        <p class="stat-label">Data Records</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-map-marker"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-number">{{ stats.states }}</h3>
+                        <p class="stat-label">States Covered</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-leaf"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-number">{{ stats.crops }}</h3>
+                        <p class="stat-label">Crop Types</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-calendar"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-number">{{ stats.years }}</h3>
+                        <p class="stat-label">Years Analyzed</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="features-section">
+    <div class="container-xl">
+        <h2 class="section-title text-center mb-5">Why Choose AgriVision AI?</h2>
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h3>AI-Powered Predictions</h3>
+                    <p>Advanced machine learning models predict crop production with high accuracy.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-comment-dots"></i>
+                    </div>
+                    <h3>Intelligent Chatbot</h3>
+                    <p>Get instant answers to agricultural questions from our AI-powered assistant.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>Real-time Analytics</h3>
+                    <p>Comprehensive dashboards with interactive visualizations of agricultural data.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-lightbulb"></i>
+                    </div>
+                    <h3>Smart Insights</h3>
+                    <p>Automatic generation of actionable insights from your agricultural data.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <h3>Enterprise Security</h3>
+                    <p>Bank-level security to protect your sensitive agricultural data.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <h3>Fully Responsive</h3>
+                    <p>Access AgriVision AI from any device - desktop, tablet, or mobile.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="cta-section">
+    <div class="container-xl">
+        <div class="cta-content">
+            <h2>Ready to Transform Your Agriculture?</h2>
+            <p>Start using AgriVision AI today to make smarter farming decisions</p>
+            <a href="/chatbot" class="btn btn-light btn-lg">
+                Launch Chatbot Now
+            </a>
+        </div>
+    </div>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const districtMap = {{ options.district_map | tojson }};
+    const cropMap = {{ options.crop_map | tojson }};
+    const button = document.getElementById('runPredictionBtn');
+    const stateSelect = document.getElementById('predState');
+    const districtSelect = document.getElementById('predDistrict');
+    const cropSelect = document.getElementById('predCrop');
+    const resultBox = document.getElementById('predictionResult');
+
+    if (!button || !resultBox || !stateSelect || !districtSelect || !cropSelect) {
+        return;
+    }
+
+    function escapeHTML(value) {
+        const div = document.createElement('div');
+        div.textContent = String(value);
+        return div.innerHTML;
+    }
+
+    function updateDistrictOptions() {
+        const selectedState = stateSelect.value;
+        const districts = districtMap[selectedState] || [];
+        districtSelect.innerHTML = '';
+
+        districts.forEach(function (district, index) {
+            const option = document.createElement('option');
+            option.value = district;
+            option.textContent = district;
+            if (index === 0) {
+                option.selected = true;
+            }
+            districtSelect.appendChild(option);
+        });
+    }
+
+    function updateCropOptions() {
+        const selectedState = stateSelect.value;
+        const crops = cropMap[selectedState] || [];
+        cropSelect.innerHTML = '';
+
+        crops.forEach(function (crop, index) {
+            const option = document.createElement('option');
+            option.value = crop;
+            option.textContent = crop;
+            if (index === 0) {
+                option.selected = true;
+            }
+            cropSelect.appendChild(option);
+        });
+    }
+
+    stateSelect.addEventListener('change', updateDistrictOptions);
+    stateSelect.addEventListener('change', updateCropOptions);
+    updateDistrictOptions();
+    updateCropOptions();
+
+    button.addEventListener('click', async function () {
+        const payload = {
+            state: document.getElementById('predState').value,
+            district: document.getElementById('predDistrict').value,
+            crop: document.getElementById('predCrop').value,
+            season: document.getElementById('predSeason').value,
+            year: Number(document.getElementById('predYear').value),
+            area: Number(document.getElementById('predArea').value),
+        };
+
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Predicting...';
+        resultBox.classList.remove('d-none');
+        resultBox.innerHTML = '<div class="alert alert-info mb-0">Running prediction...</div>';
+
+        try {
+            const response = await fetch('/api/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Prediction failed');
+            }
+
+            const details = data.details || {};
+            const confidenceLow = Math.round(details.Confidence_Low || 0).toLocaleString();
+            const confidenceHigh = Math.round(details.Confidence_High || 0).toLocaleString();
+            const historicalAvg = details.Historical_Avg ? Math.round(details.Historical_Avg).toLocaleString() : 'N/A';
+            const predictedValue = Math.round(data.prediction || 0);
+            const historicalValue = Math.round(details.Historical_Avg || 0);
+            const maxValue = Math.max(predictedValue, historicalValue, 1);
+            const trendText = details.Historical_Avg
+                ? `${Math.abs(details.vs_Historical_pct || 0)}% ${((details.vs_Historical_pct || 0) >= 0 ? 'above' : 'below')} historical average`
+                : 'Historical comparison unavailable';
+
+            resultBox.innerHTML = `
+                <div class="prediction-result-card p-4">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+                        <div>
+                            <div class="text-uppercase text-muted small fw-semibold mb-1">Prediction Result</div>
+                            <h4 class="mb-1">${escapeHTML(payload.crop)} in ${escapeHTML(payload.state)}</h4>
+                            <p class="mb-0 text-muted">${escapeHTML(payload.district)} • ${escapeHTML(payload.season)} • ${escapeHTML(payload.year)}</p>
+                        </div>
+                        <div class="text-end">
+                            <div class="text-uppercase text-muted small fw-semibold mb-1">Predicted Production</div>
+                            <div class="display-6 fw-bold text-success mb-0">${escapeHTML(Math.round(data.prediction).toLocaleString())} tons</div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="stat-card h-100">
+                                <div class="stat-content">
+                                    <h3 class="stat-number">${escapeHTML(Number(data.yield || 0).toFixed(2))}</h3>
+                                    <p class="stat-label">Yield t/ha</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="stat-card h-100">
+                                <div class="stat-content">
+                                    <h3 class="stat-number">${escapeHTML(confidenceLow)} - ${escapeHTML(confidenceHigh)}</h3>
+                                    <p class="stat-label">Confidence Band</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="stat-card h-100">
+                                <div class="stat-content">
+                                    <h3 class="stat-number">${escapeHTML(historicalAvg)}</h3>
+                                    <p class="stat-label">Historical Avg</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="prediction-bar-wrap mt-4">
+                        <div class="prediction-bar-labels">
+                            <span>Predicted vs Historical Avg</span>
+                            <span>${escapeHTML(predictedValue.toLocaleString())} / ${escapeHTML(historicalAvg)}</span>
+                        </div>
+                        <div class="prediction-bar-track mb-2">
+                            <div class="prediction-bar-fill predicted" style="width: ${Math.max(8, (predictedValue / maxValue) * 100)}%;"></div>
+                        </div>
+                        <div class="prediction-bar-track">
+                            <div class="prediction-bar-fill historical" style="width: ${details.Historical_Avg ? Math.max(8, (historicalValue / maxValue) * 100) : 8}%;"></div>
+                        </div>
+                        <div class="d-flex justify-content-between mt-2 small text-muted">
+                            <span>Predicted production</span>
+                            <span>Historical average</span>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-success mt-4 mb-0">
+                        ${escapeHTML(payload.crop)} in ${escapeHTML(payload.state)} is predicted to produce about <strong>${escapeHTML(Math.round(data.prediction).toLocaleString())} tons</strong> on ${escapeHTML(payload.area.toLocaleString())} hectares.
+                        <div class="mt-2 small">${escapeHTML(trendText)}</div>
+                    </div>
+                </div>
+            `;
+        } catch (error) {
+            resultBox.innerHTML = `<div class="alert alert-danger mb-0">${escapeHTML(error.message)}</div>`;
+        } finally {
+            button.disabled = false;
+            button.innerHTML = '<i class="fas fa-seedling"></i> Predict Production';
+        }
+    });
+});
+</script>
+{% endblock %}
